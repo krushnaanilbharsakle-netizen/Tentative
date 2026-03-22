@@ -1,0 +1,112 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="TaskFlow is a clean task manager PWA with calendar planning and offline support.">
+  <meta name="theme-color" content="#0f172a">
+  <title>TaskFlow</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%230f172a'/%3E%3Crect x='10' y='10' width='44' height='44' rx='14' fill='%2360a5fa'/%3E%3Cpath d='M20 23h24M20 32h16M20 41h24' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__chip" id="currentDate" aria-live="polite"></div>
+    <div class="topbar__chip topbar__time" id="currentTime" aria-live="polite"></div>
+  </header>
+
+  <main class="app-shell">
+    <section class="panel panel--calendar" aria-labelledby="calendarTitle">
+      <div class="panel__header">
+        <div>
+          <p class="panel__eyebrow">Planner</p>
+          <h1 id="calendarTitle">Monthly Calendar</h1>
+        </div>
+        <div class="calendar-toolbar">
+          <button class="toolbar-button toolbar-button--icon" id="prevMonthBtn" type="button" aria-label="Previous month">&larr;</button>
+          <div class="month-label" id="monthLabel" aria-live="polite"></div>
+          <button class="toolbar-button toolbar-button--icon" id="nextMonthBtn" type="button" aria-label="Next month">&rarr;</button>
+          <button class="toolbar-button" id="todayBtn" type="button">Today</button>
+        </div>
+      </div>
+
+      <div class="calendar-weekdays" aria-hidden="true">
+        <span>Sun</span>
+        <span>Mon</span>
+        <span>Tue</span>
+        <span>Wed</span>
+        <span>Thu</span>
+        <span>Fri</span>
+        <span>Sat</span>
+      </div>
+
+      <div class="calendar-grid" id="calendarGrid" role="grid" aria-label="Task calendar"></div>
+    </section>
+
+    <section class="panel panel--tasks" aria-labelledby="taskPanelTitle">
+      <div class="panel__header panel__header--tasks">
+        <div>
+          <p class="panel__eyebrow">Tasks</p>
+          <h2 id="taskPanelTitle">Tasks for Today</h2>
+        </div>
+        <p class="task-summary" id="taskSummary"></p>
+      </div>
+
+      <div class="task-list" id="taskList" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <button class="fab" id="openTaskModal" type="button" aria-label="Add task">+</button>
+
+  <div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal__header">
+        <div>
+          <p class="panel__eyebrow">Task Details</p>
+          <h2 id="modalTitle">Add Task</h2>
+        </div>
+        <button class="toolbar-button toolbar-button--icon" id="closeModalBtn" type="button" aria-label="Close modal">&times;</button>
+      </div>
+
+      <form class="task-form" id="taskForm">
+        <input type="hidden" id="taskId">
+
+        <label class="field" for="taskTitleInput">
+          <span>Title</span>
+          <input id="taskTitleInput" type="text" maxlength="120" placeholder="Plan sprint review" required>
+        </label>
+
+        <div class="field-row">
+          <label class="field" for="taskDateInput">
+            <span>Due Date</span>
+            <input id="taskDateInput" type="date" required>
+          </label>
+
+          <label class="field" for="taskImportanceInput">
+            <span>Importance</span>
+            <select id="taskImportanceInput" required>
+              <option value="Low">Low</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="High">High</option>
+            </select>
+          </label>
+        </div>
+
+        <button class="primary-button" id="saveTaskBtn" type="submit">Save Task</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("./service-worker.js").catch(function (error) {
+          console.error("Service worker registration failed:", error);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
