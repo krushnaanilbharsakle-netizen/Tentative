@@ -1,4 +1,4 @@
-﻿const STORAGE_KEY = "taskflow.tasks";
+const STORAGE_KEY = "taskflow.tasks";
 const IMPORTANCE_RANK = { High: 0, Medium: 1, Low: 2 };
 
 const state = {
@@ -32,6 +32,7 @@ const taskImportanceInput = document.getElementById("taskImportanceInput");
 initializeApp();
 
 function initializeApp() {
+  syncViewportHeight();
   bindEvents();
   updateHeaderClock();
   setInterval(updateHeaderClock, 1000);
@@ -39,6 +40,13 @@ function initializeApp() {
 }
 
 function bindEvents() {
+  window.addEventListener("resize", syncViewportHeight);
+  window.addEventListener("orientationchange", syncViewportHeight);
+
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", syncViewportHeight);
+  }
+
   openTaskModalBtn.addEventListener("click", () => openModal());
   closeModalBtn.addEventListener("click", closeModal);
   prevMonthBtn.addEventListener("click", () => moveMonth(-1));
@@ -166,7 +174,7 @@ function renderTaskList() {
 
   taskPanelTitleEl.textContent = `Tasks for ${formatSelectedDate(selectedDate)}`;
   taskSummaryEl.textContent = tasksForDate.length
-    ? `${tasksForDate.length} total • ${completedCount} done`
+    ? `${tasksForDate.length} total | ${completedCount} done`
     : "No tasks yet";
 
   taskListEl.innerHTML = "";
@@ -371,6 +379,14 @@ function loadTasks() {
 
 function persistTasks() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.tasks));
+}
+
+function syncViewportHeight() {
+  const viewportHeight = window.visualViewport
+    ? window.visualViewport.height
+    : window.innerHeight;
+
+  document.documentElement.style.setProperty("--app-height", `${Math.round(viewportHeight)}px`);
 }
 
 function updateHeaderClock() {

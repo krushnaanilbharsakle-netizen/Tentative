@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --bg: #0f172a;
   --surface: rgba(30, 41, 59, 0.88);
   --surface-strong: #1e293b;
@@ -15,6 +15,7 @@
   --radius-md: 14px;
   --radius-sm: 12px;
   --header-height: 72px;
+  --app-height: 100vh;
   --transition: 0.24s ease;
 }
 
@@ -23,19 +24,23 @@
 }
 
 html {
+  height: 100%;
   color-scheme: dark;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: var(--app-height);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: var(--text);
   background:
     radial-gradient(circle at top left, rgba(96, 165, 250, 0.14), transparent 24%),
     radial-gradient(circle at bottom right, rgba(129, 140, 248, 0.12), transparent 26%),
     linear-gradient(180deg, #11192f 0%, var(--bg) 42%, #0b1220 100%);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 body::before,
@@ -112,6 +117,7 @@ button {
   grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr);
   gap: 22px;
   min-height: 100vh;
+  min-height: var(--app-height);
   padding: calc(var(--header-height) + 18px) 24px 24px;
 }
 
@@ -287,6 +293,7 @@ h2 {
   display: grid;
   gap: 14px;
   padding-right: 2px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .task-list::-webkit-scrollbar {
@@ -333,6 +340,7 @@ h2 {
 .task-card__content {
   display: grid;
   gap: 12px;
+  min-width: 0;
 }
 
 .task-card__top {
@@ -385,12 +393,17 @@ h2 {
 
 .task-card__actions {
   display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
 .action-button {
-  width: 38px;
-  height: 38px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  flex: 0 0 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -398,11 +411,13 @@ h2 {
   background: rgba(30, 41, 59, 0.74);
   color: var(--muted);
   transition: transform var(--transition), background var(--transition), color var(--transition);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .action-button svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   fill: currentColor;
 }
 
@@ -550,7 +565,8 @@ h2 {
 
 @media (max-width: 980px) {
   body {
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   .app-shell {
@@ -620,5 +636,14 @@ h2 {
     height: 58px;
     right: 16px;
     bottom: 16px;
+  }
+}
+
+
+@media (hover: none) and (pointer: coarse) {
+  .action-button {
+    min-width: 48px;
+    min-height: 48px;
+    flex-basis: 48px;
   }
 }
