@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <link rel="apple-touch-icon" href="icon.png">
@@ -94,6 +94,16 @@
             </select>
           </label>
         </div>
+
+        <label class="field" for="taskRepeatInput">
+          <span>Repeat</span>
+          <select id="taskRepeatInput" required>
+            <option value="None" selected>None</option>
+            <option value="Daily">Daily</option>
+            <option value="Weekly">Weekly</option>
+            <option value="Monthly">Monthly</option>
+          </select>
+        </label>
 
         <button class="primary-button" id="saveTaskBtn" type="submit">Save Task</button>
       </form>

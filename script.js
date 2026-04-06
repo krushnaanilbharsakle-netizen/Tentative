@@ -1,5 +1,6 @@
 const STORAGE_KEY = "taskflow.tasks";
 const IMPORTANCE_RANK = { High: 0, Medium: 1, Low: 2 };
+const REPEAT_OPTIONS = ["None", "Daily", "Weekly", "Monthly"];
 
 const state = {
   tasks: loadTasks(),
@@ -28,6 +29,7 @@ const taskIdInput = document.getElementById("taskId");
 const taskTitleInput = document.getElementById("taskTitleInput");
 const taskDateInput = document.getElementById("taskDateInput");
 const taskImportanceInput = document.getElementById("taskImportanceInput");
+const taskRepeatInput = document.getElementById("taskRepeatInput");
 
 initializeApp();
 
@@ -211,7 +213,8 @@ function renderTaskList() {
         <div class="task-card__top">
           <div>
             <h3 class="task-card__title">${escapeHtml(task.title)}</h3>
-            <p class="task-card__date">Due ${formatShortDate(parseDateKey(task.dueDate))}</p>
+            <p class="task-card__date">Due ${formatShortDate(parseDateKey(task.repeat === "None" ? task.dueDate : state.selectedDate))}</p>
+            <p class="task-card__repeat">Repeats: ${escapeHtml(task.repeat)}</p>
           </div>
           <span class="badge badge--${task.importance.toLowerCase()}">${task.importance}</span>
         </div>
@@ -237,6 +240,7 @@ function openModal(task = null) {
   taskTitleInput.value = task ? task.title : "";
   taskDateInput.value = task ? task.dueDate : state.selectedDate;
   taskImportanceInput.value = task ? task.importance : "Medium";
+  taskRepeatInput.value = task ? task.repeat : "None";
   modalTitleEl.textContent = task ? "Edit Task" : "Add Task";
   saveTaskBtn.textContent = task ? "Update Task" : "Save Task";
   modalBackdropEl.classList.add("is-open");
@@ -252,6 +256,7 @@ function closeModal() {
   taskIdInput.value = "";
   taskDateInput.value = state.selectedDate;
   taskImportanceInput.value = "Medium";
+  taskRepeatInput.value = "None";
   state.editingTaskId = null;
 }
 
@@ -261,15 +266,16 @@ function handleTaskSubmit(event) {
   const title = taskTitleInput.value.trim();
   const dueDate = taskDateInput.value;
   const importance = taskImportanceInput.value;
+  const repeat = taskRepeatInput.value;
 
-  if (!title || !dueDate || !importance) {
+  if (!title || !dueDate || !importance || !repeat) {
     return;
   }
 
   if (state.editingTaskId) {
     state.tasks = state.tasks.map((task) =>
       task.id === state.editingTaskId
-        ? { ...task, title, dueDate, importance }
+        ? { ...task, title, dueDate, importance, repeat }
         : task
     );
   } else {
@@ -278,6 +284,7 @@ function handleTaskSubmit(event) {
       title,
       dueDate,
       importance,
+      repeat,
       completed: false,
       createdAt: Date.now(),
     });
@@ -331,7 +338,35 @@ function goToToday() {
 }
 
 function getTasksForDate(dateKey) {
-  return state.tasks.filter((task) => task.dueDate === dateKey);
+  return state.tasks.filter((task) => taskOccursOnDate(task, dateKey));
+}
+
+function taskOccursOnDate(task, dateKey) {
+  if (dateKey < task.dueDate) {
+    return false;
+  }
+
+  if (task.repeat === "Daily") {
+    return true;
+  }
+
+  if (task.repeat === "Weekly") {
+    return getDayDifference(task.dueDate, dateKey) % 7 === 0;
+  }
+
+  if (task.repeat === "Monthly") {
+    return parseDateKey(task.dueDate).getDate() === parseDateKey(dateKey).getDate();
+  }
+
+  return task.dueDate === dateKey;
+}
+
+function getDayDifference(startDateKey, endDateKey) {
+  const millisecondsPerDay = 24 * 60 * 60 * 1000;
+  const startDate = parseDateKey(startDateKey);
+  const endDate = parseDateKey(endDateKey);
+
+  return Math.round((endDate - startDate) / millisecondsPerDay);
 }
 
 function sortTasks(tasks) {
@@ -367,6 +402,7 @@ function loadTasks() {
         title: String(task.title || "").trim(),
         dueDate: typeof task.dueDate === "string" ? task.dueDate : getTodayKey(),
         importance: ["Low", "Medium", "High"].includes(task.importance) ? task.importance : "Medium",
+        repeat: REPEAT_OPTIONS.includes(task.repeat) ? task.repeat : "None",
         completed: Boolean(task.completed),
         createdAt: Number(task.createdAt) || Date.now(),
       }))
