@@ -162,7 +162,6 @@ function renderCalendar() {
 
     dayButton.innerHTML = `
       <span class="calendar-day__number">${cellDate.getDate()}</span>
-      ${hasTasks ? '<span class="calendar-day__dot" aria-hidden="true"></span>' : ""}
     `;
 
     calendarGridEl.appendChild(dayButton);

@@ -271,14 +271,6 @@ h2 {
   font-weight: 700;
 }
 
-.calendar-day__dot {
-  align-self: flex-end;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent), var(--accent-soft));
-  box-shadow: 0 0 0 6px rgba(96, 165, 250, 0.08);
-}
 
 .task-summary {
   color: var(--muted);
