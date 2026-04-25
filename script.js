@@ -1,9 +1,12 @@
 const STORAGE_KEY = "taskflow.tasks";
+const EVENT_STORAGE_KEY = "taskflow.events";
+const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const IMPORTANCE_RANK = { High: 0, Medium: 1, Low: 2 };
 const REPEAT_OPTIONS = ["None", "Daily", "Weekly", "Monthly"];
 
 const state = {
   tasks: loadTasks(),
+  events: loadEvents(),
   selectedDate: getTodayKey(),
   viewMonth: startOfMonth(parseDateKey(getTodayKey())),
   editingTaskId: null,
@@ -15,21 +18,31 @@ const monthLabelEl = document.getElementById("monthLabel");
 const calendarGridEl = document.getElementById("calendarGrid");
 const taskPanelTitleEl = document.getElementById("taskPanelTitle");
 const taskSummaryEl = document.getElementById("taskSummary");
+const dayEventsEl = document.getElementById("dayEvents");
 const taskListEl = document.getElementById("taskList");
 const openTaskModalBtn = document.getElementById("openTaskModal");
+const openEventModalBtn = document.getElementById("openEventModal");
 const modalBackdropEl = document.getElementById("modalBackdrop");
+const eventModalBackdropEl = document.getElementById("eventModalBackdrop");
 const closeModalBtn = document.getElementById("closeModalBtn");
+const closeEventModalBtn = document.getElementById("closeEventModalBtn");
 const prevMonthBtn = document.getElementById("prevMonthBtn");
 const nextMonthBtn = document.getElementById("nextMonthBtn");
 const todayBtn = document.getElementById("todayBtn");
 const taskForm = document.getElementById("taskForm");
+const eventForm = document.getElementById("eventForm");
 const modalTitleEl = document.getElementById("modalTitle");
+const eventModalTitleEl = document.getElementById("eventModalTitle");
 const saveTaskBtn = document.getElementById("saveTaskBtn");
+const saveEventBtn = document.getElementById("saveEventBtn");
 const taskIdInput = document.getElementById("taskId");
 const taskTitleInput = document.getElementById("taskTitleInput");
 const taskDateInput = document.getElementById("taskDateInput");
 const taskImportanceInput = document.getElementById("taskImportanceInput");
 const taskRepeatInput = document.getElementById("taskRepeatInput");
+const eventOriginalDateInput = document.getElementById("eventOriginalDate");
+const eventDateInput = document.getElementById("eventDateInput");
+const eventDescriptionInput = document.getElementById("eventDescriptionInput");
 
 initializeApp();
 
@@ -50,11 +63,14 @@ function bindEvents() {
   }
 
   openTaskModalBtn.addEventListener("click", () => openModal());
+  openEventModalBtn.addEventListener("click", openEventModal);
   closeModalBtn.addEventListener("click", closeModal);
+  closeEventModalBtn.addEventListener("click", closeEventModal);
   prevMonthBtn.addEventListener("click", () => moveMonth(-1));
   nextMonthBtn.addEventListener("click", () => moveMonth(1));
   todayBtn.addEventListener("click", goToToday);
   taskForm.addEventListener("submit", handleTaskSubmit);
+  eventForm.addEventListener("submit", handleEventSubmit);
 
   modalBackdropEl.addEventListener("click", (event) => {
     if (event.target === modalBackdropEl) {
@@ -62,9 +78,23 @@ function bindEvents() {
     }
   });
 
+  eventModalBackdropEl.addEventListener("click", (event) => {
+    if (event.target === eventModalBackdropEl) {
+      closeEventModal();
+    }
+  });
+
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && modalBackdropEl.classList.contains("is-open")) {
+    if (event.key !== "Escape") {
+      return;
+    }
+
+    if (modalBackdropEl.classList.contains("is-open")) {
       closeModal();
+    }
+
+    if (eventModalBackdropEl.classList.contains("is-open")) {
+      closeEventModal();
     }
   });
 
@@ -115,6 +145,7 @@ function bindEvents() {
 
 function render() {
   renderCalendar();
+  renderDayEvents();
   renderTaskList();
 }
 
@@ -142,6 +173,7 @@ function renderCalendar() {
     );
     const dateKey = formatDateKey(cellDate);
     const hasTasks = getTasksForDate(dateKey).length > 0;
+    const hasEvent = hasEventOnDate(dateKey);
 
     const dayButton = document.createElement("button");
     dayButton.type = "button";
@@ -150,6 +182,7 @@ function renderCalendar() {
       cellDate.getMonth() !== state.viewMonth.getMonth() ? "is-outside" : "",
       dateKey === state.selectedDate ? "is-selected" : "",
       dateKey === todayKey ? "is-today" : "",
+      hasEvent ? "has-event" : "",
     ]
       .filter(Boolean)
       .join(" ");
@@ -157,7 +190,7 @@ function renderCalendar() {
     dayButton.setAttribute("role", "gridcell");
     dayButton.setAttribute(
       "aria-label",
-      `${formatLongDate(cellDate)}${hasTasks ? ", has tasks" : ""}`
+      `${formatLongDate(cellDate)}${hasTasks ? ", has tasks" : ""}${hasEvent ? ", has event" : ""}`
     );
 
     dayButton.innerHTML = `
@@ -167,11 +200,28 @@ function renderCalendar() {
     calendarGridEl.appendChild(dayButton);
   }
 }
+function renderDayEvents() {
+  const dayEvent = getEventForDate(state.selectedDate);
+  dayEventsEl.innerHTML = "";
+
+  if (!dayEvent) {
+    return;
+  }
+
+  const eventCard = document.createElement("article");
+  eventCard.className = "event-card";
+  eventCard.innerHTML = `
+    <p class="event-card__label">Day Event</p>
+    <p class="event-card__description">${formatEventDescription(dayEvent.description)}</p>
+  `;
+
+  dayEventsEl.appendChild(eventCard);
+}
 
 function renderTaskList() {
   const selectedDate = parseDateKey(state.selectedDate);
   const tasksForDate = sortTasks(getTasksForDate(state.selectedDate));
-  const completedCount = tasksForDate.filter((task) => task.completed).length;
+  const completedCount = tasksForDate.filter((task) => isTaskCompletedOnDate(task, state.selectedDate)).length;
 
   taskPanelTitleEl.textContent = `Tasks for ${formatSelectedDate(selectedDate)}`;
   taskSummaryEl.textContent = tasksForDate.length
@@ -194,8 +244,9 @@ function renderTaskList() {
   }
 
   tasksForDate.forEach((task) => {
+    const isCompleted = isTaskCompletedOnDate(task, state.selectedDate);
     const card = document.createElement("article");
-    card.className = `task-card${task.completed ? " is-complete" : ""}`;
+    card.className = `task-card${isCompleted ? " is-complete" : ""}`;
 
     card.innerHTML = `
       <div class="task-card__check">
@@ -203,7 +254,7 @@ function renderTaskList() {
           class="task-checkbox"
           type="checkbox"
           data-toggle-id="${task.id}"
-          ${task.completed ? "checked" : ""}
+          ${isCompleted ? "checked" : ""}
           aria-label="Mark ${escapeHtml(task.title)} complete"
         >
       </div>
@@ -259,6 +310,29 @@ function closeModal() {
   state.editingTaskId = null;
 }
 
+function openEventModal() {
+  const dayEvent = getEventForDate(state.selectedDate);
+  eventOriginalDateInput.value = dayEvent ? dayEvent.date : "";
+  eventDateInput.value = dayEvent ? dayEvent.date : state.selectedDate;
+  eventDescriptionInput.value = dayEvent ? dayEvent.description : "";
+  eventModalTitleEl.textContent = dayEvent ? "Edit Day Event" : "Add Day Event";
+  saveEventBtn.textContent = dayEvent ? "Update Event" : "Save Event";
+  eventModalBackdropEl.classList.add("is-open");
+  eventModalBackdropEl.setAttribute("aria-hidden", "false");
+
+  requestAnimationFrame(() => eventDescriptionInput.focus());
+}
+
+function closeEventModal() {
+  eventModalBackdropEl.classList.remove("is-open");
+  eventModalBackdropEl.setAttribute("aria-hidden", "true");
+  eventForm.reset();
+  eventOriginalDateInput.value = "";
+  eventDateInput.value = state.selectedDate;
+  eventDescriptionInput.value = "";
+  eventModalTitleEl.textContent = "Add Day Event";
+  saveEventBtn.textContent = "Save Event";
+}
 function handleTaskSubmit(event) {
   event.preventDefault();
 
@@ -274,7 +348,7 @@ function handleTaskSubmit(event) {
   if (state.editingTaskId) {
     state.tasks = state.tasks.map((task) =>
       task.id === state.editingTaskId
-        ? { ...task, title, dueDate, importance, repeat }
+        ? buildUpdatedTask(task, { title, dueDate, importance, repeat })
         : task
     );
   } else {
@@ -285,6 +359,7 @@ function handleTaskSubmit(event) {
       importance,
       repeat,
       completed: false,
+      completedDates: [],
       createdAt: Date.now(),
     });
   }
@@ -293,6 +368,39 @@ function handleTaskSubmit(event) {
   state.viewMonth = startOfMonth(parseDateKey(dueDate));
   persistTasks();
   closeModal();
+  render();
+}
+
+function handleEventSubmit(event) {
+  event.preventDefault();
+
+  const originalDate = eventOriginalDateInput.value;
+  const date = eventDateInput.value;
+  const description = eventDescriptionInput.value.trim();
+
+  if (!DATE_KEY_PATTERN.test(date) || !description) {
+    return;
+  }
+
+  const eventsByDate = new Map(state.events.map((item) => [item.date, item]));
+  const existingEvent = eventsByDate.get(date);
+  const originalEvent = originalDate ? eventsByDate.get(originalDate) : null;
+
+  if (originalDate && originalDate !== date) {
+    eventsByDate.delete(originalDate);
+  }
+
+  eventsByDate.set(date, {
+    date,
+    description,
+    createdAt: existingEvent?.createdAt || originalEvent?.createdAt || Date.now(),
+  });
+
+  state.events = [...eventsByDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+  state.selectedDate = date;
+  state.viewMonth = startOfMonth(parseDateKey(date));
+  persistEvents();
+  closeEventModal();
   render();
 }
 
@@ -314,13 +422,62 @@ function deleteTask(taskId) {
 
 function toggleTaskCompletion(taskId, completed) {
   state.tasks = state.tasks.map((task) =>
-    task.id === taskId ? { ...task, completed } : task
+    task.id === taskId ? setTaskCompletionForDate(task, state.selectedDate, completed) : task
   );
   persistTasks();
   renderTaskList();
   renderCalendar();
 }
 
+function setTaskCompletionForDate(task, dateKey, completed) {
+  if (task.repeat === "None") {
+    return { ...task, completed };
+  }
+
+  const completedDates = new Set(getCompletedDates(task));
+
+  if (completed) {
+    completedDates.add(dateKey);
+  } else {
+    completedDates.delete(dateKey);
+  }
+
+  return {
+    ...task,
+    completed: false,
+    completedDates: [...completedDates].sort(),
+  };
+}
+
+function buildUpdatedTask(task, updates) {
+  const nextTask = {
+    ...task,
+    ...updates,
+  };
+
+  if (nextTask.repeat === "None") {
+    return {
+      ...nextTask,
+      completed: task.repeat === "None"
+        ? task.completed
+        : getCompletedDates(task).includes(nextTask.dueDate),
+      completedDates: [],
+    };
+  }
+
+  const shouldResetCompletedDates = task.repeat !== nextTask.repeat || task.dueDate !== nextTask.dueDate;
+  const completedDates = shouldResetCompletedDates
+    ? task.repeat === "None" && task.completed
+      ? [nextTask.dueDate]
+      : []
+    : getCompletedDates(task);
+
+  return {
+    ...nextTask,
+    completed: false,
+    completedDates,
+  };
+}
 function moveMonth(direction) {
   state.viewMonth = new Date(
     state.viewMonth.getFullYear(),
@@ -338,6 +495,22 @@ function goToToday() {
 
 function getTasksForDate(dateKey) {
   return state.tasks.filter((task) => taskOccursOnDate(task, dateKey));
+}
+
+function getEventForDate(dateKey) {
+  return state.events.find((event) => event.date === dateKey) || null;
+}
+
+function hasEventOnDate(dateKey) {
+  return Boolean(getEventForDate(dateKey));
+}
+
+function isTaskCompletedOnDate(task, dateKey) {
+  if (task.repeat === "None") {
+    return task.completed;
+  }
+
+  return getCompletedDates(task).includes(dateKey);
 }
 
 function taskOccursOnDate(task, dateKey) {
@@ -396,15 +569,28 @@ function loadTasks() {
 
     return parsedTasks
       .filter((task) => task && typeof task === "object")
-      .map((task) => ({
-        id: String(task.id || createTaskId()),
-        title: String(task.title || "").trim(),
-        dueDate: typeof task.dueDate === "string" ? task.dueDate : getTodayKey(),
-        importance: ["Low", "Medium", "High"].includes(task.importance) ? task.importance : "Medium",
-        repeat: REPEAT_OPTIONS.includes(task.repeat) ? task.repeat : "None",
-        completed: Boolean(task.completed),
-        createdAt: Number(task.createdAt) || Date.now(),
-      }))
+      .map((task) => {
+        const dueDate = typeof task.dueDate === "string" ? task.dueDate : getTodayKey();
+        const repeat = REPEAT_OPTIONS.includes(task.repeat) ? task.repeat : "None";
+        const completedDates = getCompletedDates(task);
+
+        return {
+          id: String(task.id || createTaskId()),
+          title: String(task.title || "").trim(),
+          dueDate,
+          importance: ["Low", "Medium", "High"].includes(task.importance) ? task.importance : "Medium",
+          repeat,
+          completed: repeat === "None" ? Boolean(task.completed) : false,
+          completedDates: repeat === "None"
+            ? []
+            : completedDates.length
+              ? completedDates
+              : Boolean(task.completed)
+                ? [dueDate]
+                : [],
+          createdAt: Number(task.createdAt) || Date.now(),
+        };
+      })
       .filter((task) => task.title);
   } catch (error) {
     console.error("Could not load tasks from storage:", error);
@@ -412,8 +598,46 @@ function loadTasks() {
   }
 }
 
+function loadEvents() {
+  try {
+    const rawEvents = localStorage.getItem(EVENT_STORAGE_KEY);
+    const parsedEvents = rawEvents ? JSON.parse(rawEvents) : [];
+
+    if (!Array.isArray(parsedEvents)) {
+      return [];
+    }
+
+    const eventsByDate = new Map();
+
+    parsedEvents
+      .filter((event) => event && typeof event === "object")
+      .forEach((event) => {
+        const date = typeof event.date === "string" ? event.date : "";
+        const description = typeof event.description === "string" ? event.description.trim() : "";
+
+        if (!DATE_KEY_PATTERN.test(date) || !description) {
+          return;
+        }
+
+        eventsByDate.set(date, {
+          date,
+          description,
+          createdAt: Number(event.createdAt) || Date.now(),
+        });
+      });
+
+    return [...eventsByDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+  } catch (error) {
+    console.error("Could not load events from storage:", error);
+    return [];
+  }
+}
 function persistTasks() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.tasks));
+}
+
+function persistEvents() {
+  localStorage.setItem(EVENT_STORAGE_KEY, JSON.stringify(state.events));
 }
 
 function syncViewportHeight() {
@@ -485,12 +709,24 @@ function formatLongDate(date) {
   }).format(date);
 }
 
+function formatEventDescription(value) {
+  return escapeHtml(value).replace(/\n/g, "<br>");
+}
+
 function createTaskId() {
   if (window.crypto && typeof window.crypto.randomUUID === "function") {
     return window.crypto.randomUUID();
   }
 
   return `task-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function getCompletedDates(task) {
+  if (!Array.isArray(task.completedDates)) {
+    return [];
+  }
+
+  return [...new Set(task.completedDates.filter((date) => typeof date === "string"))].sort();
 }
 
 function escapeHtml(value) {

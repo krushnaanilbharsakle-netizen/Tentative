@@ -30,6 +30,7 @@
           <div class="month-label" id="monthLabel" aria-live="polite"></div>
           <button class="toolbar-button toolbar-button--icon" id="nextMonthBtn" type="button" aria-label="Next month">&rarr;</button>
           <button class="toolbar-button" id="todayBtn" type="button">Today</button>
+          <button class="toolbar-button" id="openEventModal" type="button">Add Event</button>
         </div>
       </div>
 
@@ -55,6 +56,7 @@
         <p class="task-summary" id="taskSummary"></p>
       </div>
 
+      <div class="day-events" id="dayEvents" aria-live="polite"></div>
       <div class="task-list" id="taskList" aria-live="polite"></div>
     </section>
   </main>
@@ -106,6 +108,34 @@
         </label>
 
         <button class="primary-button" id="saveTaskBtn" type="submit">Save Task</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="eventModalBackdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="eventModalTitle">
+      <div class="modal__header">
+        <div>
+          <p class="panel__eyebrow">Calendar Note</p>
+          <h2 id="eventModalTitle">Add Day Event</h2>
+        </div>
+        <button class="toolbar-button toolbar-button--icon" id="closeEventModalBtn" type="button" aria-label="Close event modal">&times;</button>
+      </div>
+
+      <form class="task-form" id="eventForm">
+        <input type="hidden" id="eventOriginalDate">
+
+        <label class="field" for="eventDateInput">
+          <span>Date</span>
+          <input id="eventDateInput" type="date" required>
+        </label>
+
+        <label class="field" for="eventDescriptionInput">
+          <span>Event</span>
+          <textarea id="eventDescriptionInput" maxlength="280" placeholder="Team offsite, release day, family event..." required></textarea>
+        </label>
+
+        <button class="primary-button" id="saveEventBtn" type="submit">Save Event</button>
       </form>
     </div>
   </div>
